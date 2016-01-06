@@ -1,0 +1,13 @@
+[run]
+branch = True
+data_file = .coverage
+source=edx_management_commands
+omit =
+    edx_management_commands/settings*
+    edx_management_commands/conf*
+    edx_management_commands/management_commands/urls.py
+    edx_management_commands/management_commands/views.py
+    *migrations*
+    *admin.py
+    *static*
+    *templates*

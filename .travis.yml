@@ -1,0 +1,21 @@
+language: python
+python:
+    - "2.7"
+sudo: false
+
+cache:
+  - pip: true
+  - custom_install: true  # See https://github.com/travis-ci/travis-ci/issues/3239.
+before_install:
+    - "export DISPLAY=:99.0"
+    - "sh -e /etc/init.d/xvfb start"
+install:
+    - pip install -U pip wheel codecov
+    - pip install -r requirements/test.txt
+script:
+    - make validate
+branches:
+    only:
+        - master
+after_success:
+    - codecov
