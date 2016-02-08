@@ -4,13 +4,13 @@ __ http://code.edx.org/
 
 EdX Management Commands  |Travis|_ |Codecov|_
 ===========================================
-.. |Travis| image:: https://travis-ci.org/edx/edx-management-commands.svg?branch=master
-.. _Travis: https://travis-ci.org/edx/edx-management-commands
+.. |Travis| image:: https://travis-ci.org/edx/edx-django-extensions.svg?branch=master
+.. _Travis: https://travis-ci.org/edx/edx-django-extensions
 
-.. |Codecov| image:: http://codecov.io/github/edx/edx-management-commands/coverage.svg?branch=master
-.. _Codecov: http://codecov.io/github/edx/edx-management-commands?branch=master
+.. |Codecov| image:: http://codecov.io/github/edx/edx-django-extensions/coverage.svg?branch=master
+.. _Codecov: http://codecov.io/github/edx/edx-django-extensions?branch=master
 
-This repository is intended for Django 1.9 applications and utilities for reuse within
+This repository is intended for Django 1.8 applications and utilities for reuse within
 multiple edx-platform projects.
 
 Overview

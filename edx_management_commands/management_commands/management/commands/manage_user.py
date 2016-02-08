@@ -10,7 +10,6 @@ from django.db import transaction
 from django.utils.translation import gettext as _
 
 
-@transaction.atomic
 class Command(BaseCommand):
     # pylint: disable=missing-docstring
 
@@ -57,23 +56,22 @@ class Command(BaseCommand):
             )
 
     def _handle_remove(self, username, email):
-
-        users = get_user_model().objects.filter(username=username)
-        if not users:
+        try:
+            user = get_user_model().objects.get(username=username)
+        except get_user_model().DoesNotExist:
             self.stderr.write(_('Did not find a user with username "{}" - skipping.').format(username))
             return
-
-        user = users[0]
         self._check_email_match(user, email)
         self.stderr.write(_('Removing user: "{}"').format(user))
         user.delete()
 
+    @transaction.atomic
     def handle(self, username, email, is_remove, is_staff, is_superuser, groups, *args, **options):
 
         if is_remove:
             return self._handle_remove(username, email)
 
-        old_groups, new_groups = [], []
+        old_groups, new_groups = set(), set()
         user, created = get_user_model().objects.get_or_create(username=username)
 
         if created:
@@ -84,48 +82,40 @@ class Command(BaseCommand):
             # NOTE, we will not update the email address of an existing user.
             self.stderr.write(_('Found existing user: "{}"').format(user))
             self._check_email_match(user, email)
-            old_groups = list(user.groups.all())
+            old_groups = set(user.groups.all())
 
         self._maybe_update(user, 'is_staff', is_staff)
         self._maybe_update(user, 'is_superuser', is_superuser)
 
         # resolve the specified groups
-        for group_name in groups or []:
+        for group_name in groups or set():
 
             try:
                 group = Group.objects.get(name=group_name)  # pylint: disable=no-member
-                new_groups.append(group)
+                new_groups.add(group)
             except Group.DoesNotExist:
                 # warn, but move on.
                 self.stderr.write(_('Could not find a group named "{}" - skipping.').format(group_name))
 
-        add_groups = [p for p in new_groups if p not in old_groups]
-        remove_groups = [p for p in old_groups if p not in new_groups]
+        add_groups = new_groups - old_groups
+        remove_groups = old_groups - new_groups
 
-        if add_groups:
-            for ag in add_groups:
-                self.stderr.write(
-                    _(
-                        'Adding user "{username}" to group "{group_name}"'
-                    ).format(
-                        username=username, group_name=ag.name
-                    )
-                )
-                user.groups.add(ag)
-        else:
-            self.stderr.write(_('Not adding user "{}" to any groups').format(username))
+        self.stderr.write(
+            _(
+                'Adding user "{username}" to groups {group_names}'
+            ).format(
+                username=user.username,
+                group_names=[g.name for g in add_groups]
+            )
+        )
+        self.stderr.write(
+            _(
+                'Removing user "{username}" from groups {group_names}'
+            ).format(
+                username=user.username,
+                group_names=[g.name for g in remove_groups]
+            )
+        )
 
-        if remove_groups:
-            for rg in remove_groups:
-                self.stderr.write(
-                    _(
-                        'Removing user "{username}" from group "{group_name}"'
-                    ).format(
-                        username=username, group_name=rg.name
-                    )
-                )
-                user.groups.remove(rg)
-        else:
-            self.stderr.write(_('Not removing user "{}" from any groups').format(username))
-
+        user.groups = new_groups
         user.save()

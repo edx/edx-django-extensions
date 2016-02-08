@@ -33,7 +33,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = []
+extensions = ['sphinx.ext.intersphinx']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -254,3 +254,8 @@ texinfo_documents = [
 
 def setup(app):
     app.add_stylesheet('theme_overrides.css')
+
+# Allow Sphinx to discover links to the Django 1.8 docs.
+intersphinx_mapping = {
+    'django': ('http://docs.djangoproject.com/en/1.8/', 'http://docs.djangoproject.com/en/1.8/_objects/'),
+}

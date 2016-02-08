@@ -15,7 +15,7 @@ are run more than once.
 
 manage_group
 ------------
-The ``manage_group`` command is used to ensure that a specific group exists, and that it has a specific set of
+The ``manage_group`` command is used to ensure that a specific :py:class:`django.contrib.auth.models.Group` exists, and that it has a specific set of
 permissions.
 
 The following example will create a group named ``mygroup`` if it does not exist (and will do nothing if it does exist):
@@ -78,9 +78,10 @@ To assign a user to specific groups, use the `-g` option:
 The above will ensure that ``groucho`` will be assigned to ``mygroup`` and ``privileged_group``, and removed from any
 others to which they may already have been assigned.
 
-Note that if any of the groups specified with ``-g`` do not exist, the command will output a warning, but continue.
-This measure is intended to ensure that, in an automated deployment setting, a prior misconfiguration involving some
-particular group will not cause a cascading failure in setting (or removing) other group memberships.
+Note that if any of the groups specified with ``-g`` do not exist, the command will output a warning, but will
+continue without creating the group. This measure is intended to ensure that, in an automated deployment setting,
+a prior misconfiguration involving some particular group will not cause a cascading failure in setting (or removing)
+other group memberships.
 
 An option to remove, instead of create, is also available:
 

@@ -2,6 +2,7 @@
 Unit tests for user_management management commands.
 """
 import itertools
+import sys
 
 import ddt
 from django.contrib.auth.models import Group, Permission, User
@@ -12,6 +13,15 @@ from django.test import TestCase
 TEST_EMAIL = 'test@example.com'
 TEST_GROUP = 'test-group'
 TEST_USERNAME = 'test-user'
+TEST_DATA = (
+    {},
+    {
+        TEST_GROUP: ['add_group', 'change_group', 'change_group'],
+    },
+    {
+        'other-group': ['add_group', 'change_group', 'change_group'],
+    },
+)
 
 
 @ddt.ddt
@@ -22,8 +32,9 @@ class TestManageGroupCommand(TestCase):
 
     def set_group_permissions(self, group_permissions):
         """
-        Sets up a before-state for groups and permissions in tests, which can checked
-        afterward to ensure that a failed atomic operation has not had any side effects.
+        Sets up a before-state for groups and permissions in tests, which
+        can be checked afterward to ensure that a failed atomic
+        operation has not had any side effects.
         """
         content_type = ContentType.objects.get_for_model(Group)
         for group_name, permission_codenames in group_permissions.items():
@@ -46,7 +57,7 @@ class TestManageGroupCommand(TestCase):
         """
         DRY helper.
         """
-        self.assertEqual(set(group_names), set([g.name for g in Group.objects.all()]))  # pylint: disable=no-member
+        self.assertEqual(set(group_names), {g.name for g in Group.objects.all()})  # pylint: disable=no-member
 
     def check_permissions(self, group_name, permission_codenames):
         """
@@ -54,58 +65,35 @@ class TestManageGroupCommand(TestCase):
         """
         self.assertEqual(
             set(permission_codenames),
-            set([p.codename for p in Group.objects.get(name=group_name).permissions.all()])  # pylint: disable=no-member
+            {p.codename for p in Group.objects.get(name=group_name).permissions.all()}  # pylint: disable=no-member
         )
 
     @ddt.data(
-        {},
-        {
-            TEST_GROUP: ['add_group', 'change_group', 'change_group'],
-        },
-        {
-            'other-group': ['add_group', 'change_group', 'change_group'],
-        },
+        *(
+            (data, args, exception)
+            for data in TEST_DATA
+            for args, exception in (
+                ((), 'too few arguments' if sys.version_info.major == 2 else 'required: group_name'),  # no group name
+                (('x' * 81,), 'invalid group name'),  # invalid group name
+                ((TEST_GROUP, 'some-other-group'), 'unrecognized arguments'),  # multiple arguments
+                ((TEST_GROUP, '--some-option', 'dummy'), 'unrecognized arguments')  # unexpected option name
+            )
+        )
     )
-    def test_invalid_input(self, initial_group_permissions):
+    @ddt.unpack
+    def test_invalid_input(self, initial_group_permissions, command_args, exception_message):
         """
         Ensures that invalid inputs result in errors with relevant output,
         and that no persistent state is changed.
         """
         self.set_group_permissions(initial_group_permissions)
 
-        # no group name
         with self.assertRaises(CommandError) as exc_context:
-            call_command('manage_group')
-        self.assertIn('too few arguments', exc_context.exception.message.lower())
+            call_command('manage_group', *command_args)
+        self.assertIn(exception_message, str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
-        # invalid group name
-        with self.assertRaises(CommandError) as exc_context:
-            call_command('manage_group', 'x' * 81)  # NOTE, max length of name is 80
-        self.assertIn('invalid group name', exc_context.exception.message.lower())
-        self.check_group_permissions(initial_group_permissions)
-
-        # multiple arguments
-        with self.assertRaises(CommandError) as exc_context:
-            call_command('manage_group', TEST_GROUP, 'some-other-group')
-        self.assertIn('unrecognized arguments', exc_context.exception.message.lower())
-        self.check_group_permissions(initial_group_permissions)
-
-        # unexpected option name
-        with self.assertRaises(CommandError) as exc_context:
-            call_command('manage_group', TEST_GROUP, '--some-option', 'dummy')
-        self.assertIn('unrecognized arguments', exc_context.exception.message.lower())
-        self.check_group_permissions(initial_group_permissions)
-
-    @ddt.data(
-        {},
-        {
-            TEST_GROUP: ['add_group', 'change_group', 'change_group'],
-        },
-        {
-            'other-group': ['add_group', 'change_group', 'change_group'],
-        },
-    )
+    @ddt.data(*TEST_DATA)
     def test_invalid_permission(self, initial_group_permissions):
         """
         Ensures that a permission that cannot be parsed or resolved results in
@@ -116,33 +104,33 @@ class TestManageGroupCommand(TestCase):
         # not parseable
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_group', TEST_GROUP, '--permissions', 'fail')
-        self.assertIn('invalid permission option', exc_context.exception.message.lower())
+        self.assertIn('invalid permission option', str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
         # not parseable
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_group', TEST_GROUP, '--permissions', 'f:a:i:l')
-        self.assertIn('invalid permission option', exc_context.exception.message.lower())
+        self.assertIn('invalid permission option', str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
         # invalid app label
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_group', TEST_GROUP, '--permissions', 'nonexistent-label:dummy-model:dummy-perm')
-        self.assertIn('no installed app', exc_context.exception.message.lower())
-        self.assertIn('nonexistent-label', exc_context.exception.message.lower())
+        self.assertIn('no installed app', str(exc_context.exception).lower())
+        self.assertIn('nonexistent-label', str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
         # invalid model name
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_group', TEST_GROUP, '--permissions', 'auth:nonexistent-model:dummy-perm')
-        self.assertIn('nonexistent-model', exc_context.exception.message.lower())
+        self.assertIn('nonexistent-model', str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
         # invalid model name
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_group', TEST_GROUP, '--permissions', 'auth:Group:nonexistent-perm')
-        self.assertIn('invalid permission codename', exc_context.exception.message.lower())
-        self.assertIn('nonexistent-perm', exc_context.exception.message.lower())
+        self.assertIn('invalid permission codename', str(exc_context.exception).lower())
+        self.assertIn('nonexistent-perm', str(exc_context.exception).lower())
         self.check_group_permissions(initial_group_permissions)
 
     def test_group(self):
@@ -242,13 +230,13 @@ class TestManageUserCommand(TestCase):
         User.objects.create(username=TEST_USERNAME, email=TEST_EMAIL)
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_user', TEST_USERNAME, 'other@example.com')
-        self.assertIn('email addresses do not match', exc_context.exception.message.lower())
+        self.assertIn('email addresses do not match', str(exc_context.exception).lower())
         self.assertEqual([(TEST_USERNAME, TEST_EMAIL)], [(u.username, u.email) for u in User.objects.all()])
 
         # check that removal uses the same check
         with self.assertRaises(CommandError) as exc_context:
             call_command('manage_user', TEST_USERNAME, 'other@example.com', '--remove')
-        self.assertIn('email addresses do not match', exc_context.exception.message.lower())
+        self.assertIn('email addresses do not match', str(exc_context.exception).lower())
         self.assertEqual([(TEST_USERNAME, TEST_EMAIL)], [(u.username, u.email) for u in User.objects.all()])
 
     @ddt.data(*itertools.product([(True, True), (True, False), (False, True), (False, False)], repeat=2))

@@ -29,15 +29,15 @@ class Command(BaseCommand):
             self.stderr.write(_('Removed group: "{}"').format(group_name))
         except Group.DoesNotExist:
             self.stderr.write(_('Did not find a group with name "{}" - skipping.').format(group_name))
-            return
 
     @transaction.atomic
     def handle(self, group_name, is_remove, permissions=None, *args, **options):
 
         if is_remove:
-            return self._handle_remove(group_name)
+            self._handle_remove(group_name)
+            return
 
-        old_permissions, new_permissions = [], []
+        old_permissions = set()
         group, created = Group.objects.get_or_create(name=group_name)  # pylint: disable=no-member
 
         if created:
@@ -46,7 +46,7 @@ class Command(BaseCommand):
                 # name.max_length won't be enforced by the db.
                 # See also http://www.sqlite.org/faq.html#q9
                 group.full_clean()
-            except ValidationError, exc:
+            except ValidationError as exc:
                 # give a more helpful error
                 raise CommandError(
                     _(
@@ -59,11 +59,37 @@ class Command(BaseCommand):
             self.stderr.write(_('Created new group: "{}"').format(group_name))
         else:
             self.stderr.write(_('Found existing group: "{}"').format(group_name))
-            old_permissions = list(group.permissions.all())
+            old_permissions = set(group.permissions.all())
 
-        # resolve the specified permissions
-        for permission in permissions or []:
+        new_permissions = self._resolve_permissions(permissions or set())
 
+        add_permissions = new_permissions - old_permissions
+        remove_permissions = old_permissions - new_permissions
+
+        self.stderr.write(
+            _(
+                'Adding {codenames} permissions to group "{group}"'
+            ).format(
+                codenames=[ap.name for ap in add_permissions],
+                group=group.name
+            )
+        )
+        self.stderr.write(
+            _(
+                'Removing {codenames} permissions from group "{group}"'
+            ).format(
+                codenames=[rp.codename for rp in remove_permissions],
+                group=group.name
+            )
+        )
+
+        group.permissions = new_permissions
+
+        group.save()
+
+    def _resolve_permissions(self, permissions):
+        new_permissions = set()
+        for permission in permissions:
             try:
                 app_label, model_name, codename = permission.split(':')
             except ValueError:
@@ -75,8 +101,8 @@ class Command(BaseCommand):
             # this will raise a LookupError if it fails.
             try:
                 model_class = apps.get_model(app_label, model_name)
-            except LookupError, exc:
-                raise CommandError(exc.message)
+            except LookupError as exc:
+                raise CommandError(str(exc))
 
             content_type = ContentType.objects.get_for_model(model_class)
             try:
@@ -96,36 +122,5 @@ class Command(BaseCommand):
                         model_name=model_class.__name__,
                     )
                 )
-            new_permissions.append(new_permission)
-
-        add_permissions = [p for p in new_permissions if p not in old_permissions]
-        remove_permissions = [p for p in old_permissions if p not in new_permissions]
-
-        if add_permissions:
-            for ap in add_permissions:
-                self.stderr.write(
-                    _(
-                        'Adding "{codename}" permission to group "{group}"'
-                    ).format(
-                        codename=ap.codename, group=group_name
-                    )
-                )
-                group.permissions.add(ap)
-        else:
-            self.stderr.write(_('No permissions to add to group "{}"').format(group_name))
-
-        if remove_permissions:
-            for rp in remove_permissions:
-                self.stderr.write(
-                    _(
-                        'Removing "{codename}" permission from group "{group}"'
-                    ).format(
-                        codename=rp.codename,
-                        group=group_name,
-                    )
-                )
-                group.permissions.remove(rp)
-        else:
-            self.stderr.write(_('No permissions to remove from group "{}"').format(group_name))
-
-        group.save()
+            new_permissions.add(new_permission)
+        return new_permissions

@@ -6,7 +6,7 @@ Django applications, so these settings will not be used.
 """
 
 SECRET_KEY = 'insecure-secret-key'
-ROOT_URLCONF = 'edx_user_tools.urls'
+ROOT_URLCONF = 'edx_management_commands.management_commands.urls'
 
 INSTALLED_APPS = (
     'django.contrib.auth',

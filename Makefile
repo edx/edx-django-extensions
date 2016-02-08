@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := test
 
 .PHONY: clean compile_translations dummy_translations extract_translations fake_translations help html_coverage \
-	migrate pull_translations push_translations quality requirements test update_translations validate
+	migrate pull_translations push_translations quality requirements production-requirements test update_translations validate
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -26,11 +26,11 @@ clean:
 	coverage erase
 	rm -rf assets
 
-local-requirements:
-	pip install -qr requirements/local.txt --exists-action w
-
 requirements:
-	pip install -qr requirements.txt --exists-action w
+	pip install -qr requirements/base.txt --exists-action w
+
+production-requirements:
+	pip install -qr requirements/base.txt --exists-action w
 
 test: clean
 	coverage run ./manage.py test edx_management_commands
