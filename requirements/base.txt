@@ -1,0 +1,7 @@
+# NOTE this requirements file is for tests.
+# Runtime requirements are handled in setup.py
+-e .
+ddt
+edx-lint
+coverage==3.7.1
+pep8==1.5.7
