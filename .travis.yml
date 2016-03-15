@@ -1,22 +1,34 @@
 language: python
+
 python:
     - "2.7"
     - "3.5"
+
 sudo: false
 
 cache:
   - pip: true
   - custom_install: true  # See https://github.com/travis-ci/travis-ci/issues/3239.
+
 before_install:
     - "export DISPLAY=:99.0"
     - "sh -e /etc/init.d/xvfb start"
+
 install:
     - pip install -U pip wheel codecov
     - make requirements
+
 script:
     - make validate
-branches:
-    only:
-        - master
+
 after_success:
     - codecov
+
+deploy:
+  provider: pypi
+  user: edx
+  password:
+    secure: FBcN2JcaEfULzfRmoxH2319AJy8+EVkGM3eoSPSpQGPwcahGU7QF375JTR0JDAENRImEQhyrcasyKG7DelJMqXa52eC3/368OC2odmGcD6GJRoRhDv9L761Q1ZKm/zP0GMX742tdnQAYfLusq+1yzQp6duEkjBHcnYu+0orsItwzfXWWn9/anfVI+1BDlUjx/PJOpzcwTZX9qdbPdOobt7TRiBNDczjss6/ZoC2h4UF1jTkk0VIs8LBOb2xkL81LvDoj0JEXyeswkFiG8DzLRvMJAhRSTyWqTMCTwRyNd9gzFewY1x52mSJ+Mdg2OEFKunremJfKbiFkF7bSnpGdBBmpjW2GDQlMlvURZyfw4GK3QyZ54m2FV+NVINvBQsSx7FrX4o/mH+wbvHon8jAIxyxCZz1o+Ti9cobUq8sxVQhVxTZW50l4pV1bmqfNmeM5sB1t3k0jhLNP7rQ5k1vlXW03+TFZh4KfoRD/wup4VWYNNYKxrO2uFpa80mGZ/dX1zCvh1iUAkUiuuBcoqPl5Ui0K1ra+PSnYIjyVliaNJj3Mv/9LEE/IzIc6lgZ/D7y7lV3NzAL+F6C68C+ON3UVeP5W1jo7Wwhi47AMC6S5RHRifSub42xROjNvnyvTj4s9GCB0XTrW+epIFeUJAzMWtkOOLEDFMVf5zmqWmQLK5yQ=
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
