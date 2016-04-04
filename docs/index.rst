@@ -11,7 +11,6 @@ Reusable management commands for automated deployment of Django Applications.
    :maxdepth: 2
 
    getting_started
+   commands
    testing
    internationalization
-   management_commands
-
