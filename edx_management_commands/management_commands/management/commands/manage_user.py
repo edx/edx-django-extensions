@@ -72,12 +72,14 @@ class Command(BaseCommand):
             return self._handle_remove(username, email)
 
         old_groups, new_groups = set(), set()
-        user, created = get_user_model().objects.get_or_create(username=username)
+        user, created = get_user_model().objects.get_or_create(
+            username=username,
+            defaults={'email': email}
+        )
 
         if created:
             user.set_unusable_password()
             self.stderr.write(_('Created new user: "{}"').format(user))
-            self._maybe_update(user, 'email', email)
         else:
             # NOTE, we will not update the email address of an existing user.
             self.stderr.write(_('Found existing user: "{}"').format(user))
