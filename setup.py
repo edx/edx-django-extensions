@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='edx-management-commands',
-    version='0.1.0',
+    version='0.1.1',
     description='Reusable automation and configuration utilities for edX Django applications',
     author='edX',
     url='https://github.com/edx/edx-django-extensions',
