@@ -8,7 +8,7 @@ setup(
     version='0.1.1',
     description='Reusable automation and configuration utilities for edX Django applications',
     author='edX',
-    url='https://github.com/edx/edx-django-extensions',
+    url='https://github.com/edx/edx-management-commands',
     license='AGPL',
     classifiers=[
         'Development Status :: 3 - Alpha',
